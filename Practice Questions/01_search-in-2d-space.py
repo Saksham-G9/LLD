@@ -1,4 +1,4 @@
-def searchMatrix(mat: [[int]], target: int) -> bool:
+def searchMatrix(mat: list[[int]], target: int) -> bool:
     # Write your code here.
     for row in mat:
         if row[0] <= target <= row[-1]:
@@ -31,12 +31,13 @@ def rotateMatrix(mat, n, m):
         mat[s_rowI][i], temp = temp, mat[s_rowI][i]
 
     s_rowI += 1
-    
+
     # right
     for i in range(s_rowI, m):
         mat[i][e_colI], temp = temp, mat[i][e_colI]
 
     print(mat)
+
 
 mat = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]
 target = 8
