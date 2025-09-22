@@ -57,10 +57,28 @@ class Solution:
 
         return nums1
 
+    def maxProfit(self, prices: List[int]) -> int:
+
+        curr_max_profit = float("-inf")
+        # profit_arr = [0] * len(prices)
+        prev_max = float("-inf")
+
+        i = len(prices) - 1
+
+        for price in prices[::-1]:
+            if prev_max == float("-inf"):
+                prev_max = price
+                curr_max_profit = 0
+            else:
+                # profit_arr[i] = prev_max - price
+                curr_max_profit = max(prev_max - price, curr_max_profit)
+                prev_max = max(prev_max, price)
+
+            i -= 1
+
+        return curr_max_profit
+
 
 sol = Solution()
-nums1 = [2, 0, 0]
-m = 1
-nums2 = [1, 1]
-n = 2
-print(sol.merge(nums1, m, nums2, n))
+prices = [7, 6, 4, 3, 1]
+print(sol.maxProfit(prices))
