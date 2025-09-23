@@ -78,7 +78,32 @@ class Solution:
 
         return curr_max_profit
 
+    def maxSubArray(self, nums: List[int]) -> int:
+        res = float("-inf")
+        for i in range(len(nums)):
+            curr_sum = 0
+            for j in range(i, len(nums)):
+                curr_sum += nums[j]
+                res = max(curr_sum, res)
+
+        return res
+
+    def myPow(self, x: float, n: int) -> float:
+        if n < 0:
+            x, n = 1 / x, -n
+
+        res = 1
+        while n:
+
+            if n % 2 == 1:  # odd
+                res *= x
+
+            x *= x
+            n = n // 2
+
+        return res
+
 
 sol = Solution()
-prices = [7, 6, 4, 3, 1]
-print(sol.maxProfit(prices))
+x = 2.00000
+print(sol.myPow(x, 10))
