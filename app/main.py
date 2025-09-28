@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from scalar_fastapi import get_scalar_api_reference
 
 app = FastAPI()
@@ -23,7 +23,10 @@ def get_shipment(tracking_id: int):
     try:
         return next(s for s in shipments if s["tracking_id"] == tracking_id)
     except StopIteration:
-        return {"error": "Shipment not found"}
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Shipment with tracking_id {tracking_id} not found",
+        )
 
 
 @app.get("/scalar", include_in_schema=False)
@@ -31,3 +34,14 @@ def get_scalar_docs():
     return get_scalar_api_reference(
         openapi_url=app.openapi_url, title="Scalar API Reference"
     )
+
+
+@app.post("/shipment")
+def submit_shipment(content: dict) -> dict[str, str | int]:
+    new_shipment = {
+        "tracking_id": len(shipments) + 1,
+        "content": content.get("content", "unknown"),
+        "status": content.get("status", "pending"),
+    }
+    shipments.append(new_shipment)
+    return new_shipment
