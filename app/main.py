@@ -1,28 +1,17 @@
 from fastapi import FastAPI, HTTPException, status
 from scalar_fastapi import get_scalar_api_reference
-from pydantic import BaseModel
+from .schemas import Shipment, ShipmentUpdate, ShipmentStatus, ShipmentResponse
 
 app = FastAPI()
 
 
-class Shipment(BaseModel):
-    tracking_id: int
-    content: str
-    status: str
-
-
-class ShipmentUpdate(BaseModel):
-    content: str | None = None
-    status: str | None = None
-
-
 shipments: list[Shipment] = [
-    Shipment(tracking_id=1, content="wooden table", status="in transit"),
-    Shipment(tracking_id=2, content="metal chair", status="delivered"),
-    Shipment(tracking_id=3, content="plastic cup", status="pending"),
-    Shipment(tracking_id=4, content="glass bottle", status="in transit"),
-    Shipment(tracking_id=5, content="ceramic plate", status="delivered"),
-    Shipment(tracking_id=6, content="cotton shirt", status="pending"),
+    Shipment(tracking_id=1, content="wooden table", status=ShipmentStatus.IN_TRANSIT),
+    Shipment(tracking_id=2, content="metal chair", status=ShipmentStatus.DELIVERED),
+    Shipment(tracking_id=3, content="plastic cup", status=ShipmentStatus.PLACED),
+    Shipment(tracking_id=4, content="glass bottle", status=ShipmentStatus.IN_TRANSIT),
+    Shipment(tracking_id=5, content="ceramic plate", status=ShipmentStatus.DELIVERED),
+    Shipment(tracking_id=6, content="cotton shirt", status=ShipmentStatus.PLACED),
 ]
 
 
@@ -39,12 +28,15 @@ def get_shipments() -> list[Shipment]:
 
 
 @app.get("/latest-shipment")
-def get_latest_shipment() -> Shipment:
-    return max(shipments, key=lambda x: x.tracking_id)
+def get_latest_shipment() -> ShipmentResponse:
+    latest_shipment = max(shipments, key=lambda x: x.tracking_id)
+    return ShipmentResponse(
+        content=latest_shipment.content, status=latest_shipment.status
+    )
 
 
 @app.get("/shipment/{tracking_id}")
-def get_shipment(tracking_id: int) -> Shipment:
+def get_shipment(tracking_id: int) -> ShipmentResponse:
     shipment = next((s for s in shipments if s.tracking_id == tracking_id), None)
     if shipment is None:
         raise HTTPException(
@@ -55,7 +47,7 @@ def get_shipment(tracking_id: int) -> Shipment:
 
 
 @app.post("/shipment")
-def submit_shipment(shipment: Shipment) -> Shipment:
+def submit_shipment(shipment: Shipment) -> ShipmentResponse:
     new_shipment = Shipment(
         tracking_id=len(shipments) + 1,
         content=shipment.content,
@@ -66,7 +58,7 @@ def submit_shipment(shipment: Shipment) -> Shipment:
 
 
 @app.put("/shipment/{tracking_id}")
-def shipment_update(tracking_id: int, shipment: Shipment) -> Shipment:
+def update_shipment(tracking_id: int, shipment: Shipment) -> ShipmentResponse:
     shipment = get_shipment(tracking_id)
     if not shipment:
         raise HTTPException(
@@ -79,7 +71,7 @@ def shipment_update(tracking_id: int, shipment: Shipment) -> Shipment:
 
 
 @app.patch("/shipment/{tracking_id}")
-def shipment_update_partial(tracking_id: int, shipment: ShipmentUpdate) -> Shipment:
+def shipment_update_partial(tracking_id: int, shipment: ShipmentUpdate) -> ShipmentResponse:
     shipment_update = get_shipment(tracking_id)
     if not shipment_update:
         raise HTTPException(
