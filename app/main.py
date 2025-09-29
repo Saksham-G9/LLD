@@ -1,9 +1,11 @@
 from fastapi import FastAPI, HTTPException, status
 from scalar_fastapi import get_scalar_api_reference
 from .schemas import Shipment, ShipmentUpdate, ShipmentResponse
-from .database import shipments, update_json_file
+from .database import Database
 
 app = FastAPI()
+
+database = Database()
 
 
 @app.get("/scalar", include_in_schema=False)
@@ -15,11 +17,17 @@ def get_scalar_docs():
 
 @app.get("/shipment")
 def get_shipments() -> list[Shipment]:
-    return shipments
+    return database.get_all()
 
 
 @app.get("/latest-shipment")
 def get_latest_shipment() -> ShipmentResponse:
+    shipments = database.get_all()
+    if not shipments:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No shipments found",
+        )
     latest_shipment = max(shipments, key=lambda x: x.tracking_id)
     return ShipmentResponse(
         content=latest_shipment.content, status=latest_shipment.status
@@ -28,67 +36,58 @@ def get_latest_shipment() -> ShipmentResponse:
 
 @app.get("/shipment/{tracking_id}")
 def get_shipment(tracking_id: int) -> ShipmentResponse:
-    shipment = next((s for s in shipments if s.tracking_id == tracking_id), None)
+    shipment = database.get(tracking_id)
     if shipment is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Shipment with tracking_id {tracking_id} not found",
         )
-    return shipment
+    return ShipmentResponse(content=shipment.content, status=shipment.status)
 
 
 @app.post("/shipment")
-def submit_shipment(shipment: Shipment) -> ShipmentResponse:
+def submit_shipment(shipment: Shipment) -> Shipment:
+    new_tracking_id = database.create(shipment)
     new_shipment = Shipment(
-        tracking_id=len(shipments) + 1,
+        tracking_id=new_tracking_id,
         content=shipment.content,
         status=shipment.status,
     )
-    shipments.append(new_shipment)
-    update_json_file(shipments)
     return new_shipment
 
 
 @app.put("/shipment/{tracking_id}")
-def update_shipment(tracking_id: int, shipment: Shipment) -> ShipmentResponse:
-    shipment = get_shipment(tracking_id)
-    if not shipment:
+def update_shipment(tracking_id: int, shipment: Shipment) -> Shipment:
+    existing = database.get(tracking_id)
+    if existing is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Shipment with tracking_id {tracking_id} not found",
         )
-    shipment.content = shipment.content
-    shipment.status = shipment.status
-    update_json_file(shipments)
-    return shipment
+    updated = database.update(tracking_id, ShipmentUpdate(content=shipment.content, status=shipment.status))
+    return updated
 
 
 @app.patch("/shipment/{tracking_id}")
 def shipment_update_partial(
     tracking_id: int, shipment: ShipmentUpdate
-) -> ShipmentResponse:
-    shipment_update = get_shipment(tracking_id)
-    if not shipment_update:
+) -> Shipment:
+    existing = database.get(tracking_id)
+    if existing is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Shipment with tracking_id {tracking_id} not found",
         )
-    if shipment.content is not None:
-        shipment_update.content = shipment.content
-    if shipment.status is not None:
-        shipment_update.status = shipment.status
-    update_json_file(shipments)
-    return shipment_update
+    updated = database.update(tracking_id, shipment)
+    return updated
 
 
 @app.delete("/shipment/{tracking_id}")
 def delete_shipment(tracking_id: int):
-    shipment = get_shipment(tracking_id)
-    if not shipment:
+    deleted = database.delete(tracking_id)
+    if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Shipment with tracking_id {tracking_id} not found",
         )
-    shipments.remove(shipment)
-    update_json_file(shipments)
     return {"detail": f"Shipment with tracking_id {tracking_id} deleted"}
